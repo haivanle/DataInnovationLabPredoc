@@ -1,0 +1,93 @@
+clear 
+use "/Users/haivanle/Documents/Van_coding_assignment/loans_merged.dta"
+// There are some books without titles which will affect the completeness of data in task 3-4
+// There are a total of 88006 unique books id
+unique bib_doc_id // -- 88006
+duplicates drop 
+gen loans = 1
+// Add the number of loans for each book id while keeping important columns
+collapse (sum) loans, by(bib_doc_id date_scanned year_scanned scanned year_loaned location title_display)
+xtset bib_doc_id year_loaned
+tsfill, full
+spbalance // check if panel data is strongly balanced
+sort year_loaned // now each year has 88006 unique observations
+replace loans = 0 if loans == .
+
+foreach x in scanned date_scanned year_scanned {
+                   gsort bib_doc_id year_loaned 
+                   bysort bib_doc_id: carryforward `x', gen(var1)
+                   gsort bib_doc_id -year_loaned // replace the missing values by performing one more "carryforward" in a backward way
+                   bysort bib_doc_id: carryforward var1, gen(var2)
+                   replace `x' = var2
+                   drop var1 var2
+                   }
+
+gen postscanned = year_loaned > year_scanned
+gen lnloans = ln(loans+1) 
+
+gen yearlocation = string(year_loaned) + " + " + location
+encode yearlocation, gen(yearloc)
+gen loandummies = loans > 0
+
+save "master.dta" 
+// log_OLS
+reghdfe lnloans postscanned, absorb(bib_doc_id yearloc) vce(cluster bib_doc_id)
+// LPM
+reghdfe loandummies postscanned, absorb(bib_doc_id yearloc) vce(cluster bib_doc_id)
+// reghdfe loandummies postscanned, absorb(bib_doc_id yearlocation) vce(cluster bib_doc_id)
+
+// As I used title to merge the master dataset and the title-genre dataset, I ran into the error of strL and str# so I had to change the type of the title
+gen len = length(title_display)
+sum len // the max length of a title is 500
+gen str80 title_display_str = substr(title_display, 1, 500)
+drop len
+
+bysort bib_doc_id : egen title_str=mode(title_display_str)
+drop title_display_str title_display
+
+save "master_2.dta"
+clear 
+use "/Users/haivanle/Documents/Van_coding_assignment/genres.dta"
+gen len = length(title)
+sum len
+gen str80 title_str = substr(title, 1, 500)
+drop len title
+duplicates drop title_str, force
+save "genres_str.dta"
+
+clear 
+use master_2
+merge m:1 title_str using genres_str
+save "finalreg.dta"
+// at this step, as mentioned above, the missing titles led to missing data here
+
+// Here, we look at the impact of genre on our regression analysis by considering year-genre fixed effect -- three sets of fixed effects
+mkdir temp
+est clear
+reghdfe lnloans postscanned, absorb(bib_doc_id yearloc genre) vce(cluster bib_doc_id)
+qui estadd local bookfe "Yes"
+qui estadd local yearlocfe "Yes"
+qui estadd local genrefe "Yes"
+estimates save temp/logols, replace
+reghdfe loandummies postscanned, absorb(bib_doc_id yearloc genre) vce(cluster bib_doc_id)
+qui estadd local bookfe "Yes"
+qui estadd local yearlocfe "Yes"
+qui estadd local genrefe "Yes"
+estimates save temp/lpm, replace
+eststo: estimates use temp/logols
+eststo: estimates use temp/lpm
+
+esttab est1 est2, label keep(postscanned*) se nonotes coeflabels(postscanned "Post-Scanned") s(bookfe yearlocfe genrefe N, label("Book FE" "Year-Location FE" "Genre FE" N )) mtitles("log-OLS"  "LPM") mgroups( "Main effect") nonumbers
+
+----------------------------------------------------
+                      Main effect                   
+                          log-OLS             LPM   
+----------------------------------------------------
+Post-Scanned             -0.00876***     -0.00951***
+                       (0.000803)      (0.000749)   
+----------------------------------------------------
+Book FE                       Yes             Yes   
+Year-Location FE              Yes             Yes   
+Genre FE                      Yes             Yes   
+N                          783612          783612   
+----------------------------------------------------
