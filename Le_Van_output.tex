@@ -1,0 +1,155 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2761
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 // Attempt to recreate table 5 \
+// My general approach is to use the loans_merge.dta table which shows the number of times a book was loaned. Then, I collapse the dataset to get a summary stats like how many times a book was loaned while keeping important information.\
+// To create a balanced sample, I used xtset and fill in the missing data using tsfill. Then, I followed the instructions and read the paper to determine how you ran the regression and define postscanned variable. \
+// Then I used reghdfe for the fixed effects analysis.\
+\
+. reghdfe lnloans postscanned, absorb(bib_doc_id yearloc) vce(cluster bib_doc_id)
+(MWFE estimator converged in 9 iterations)
+
+HDFE Linear regression                            Number of obs   =    792,054
+Absorbing 2 HDFE groups                           F(   1,  88005) =     117.28
+Statistics robust to heteroskedasticity           Prob > F        =     0.0000
+                                                  R-squared       =     0.7537
+                                                  Adj R-squared   =     0.7229
+                                                  Within R-sq.    =     0.0002
+Number of clusters (bib_doc_id) =     88,006      Root MSE        =     0.1778
+
+                        (Std. err. adjusted for 88,006 clusters in bib_doc_id)
+------------------------------------------------------------------------------
+             |               Robust
+     lnloans | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+ postscanned |  -.0086367   .0007975   -10.83   0.000    -.0101998   -.0070735
+       _cons |   .1434703   .0001526   940.44   0.000     .1431713    .1437693
+------------------------------------------------------------------------------
+
+Absorbed degrees of freedom:
+-----------------------------------------------------+
+ Absorbed FE | Categories  - Redundant  = Num. Coefs |
+-------------+---------------------------------------|
+  bib_doc_id |     88006       88006           0    *|
+     yearloc |       189           1         188     |
+-----------------------------------------------------+
+* = FE nested within cluster; treated as redundant for DoF computation
+
+\
+\
+. reghdfe loandummies postscanned, absorb(bib_doc_id yearloc) vce(cluster bib_doc_id)
+(MWFE estimator converged in 9 iterations)
+
+HDFE Linear regression                            Number of obs   =    792,054
+Absorbing 2 HDFE groups                           F(   1,  88005) =     160.41
+Statistics robust to heteroskedasticity           Prob > F        =     0.0000
+                                                  R-squared       =     0.8241
+                                                  Adj R-squared   =     0.8020
+                                                  Within R-sq.    =     0.0002
+Number of clusters (bib_doc_id) =     88,006      Root MSE        =     0.1666
+
+                        (Std. err. adjusted for 88,006 clusters in bib_doc_id)
+------------------------------------------------------------------------------
+             |               Robust
+ loandummies | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+ postscanned |  -.0094141   .0007433   -12.67   0.000    -.0108709   -.0079572
+       _cons |   .1704964   .0001422  1199.15   0.000     .1702177     .170775
+------------------------------------------------------------------------------
+
+Absorbed degrees of freedom:
+-----------------------------------------------------+
+ Absorbed FE | Categories  - Redundant  = Num. Coefs |
+-------------+---------------------------------------|
+  bib_doc_id |     88006       88006           0    *|
+     yearloc |       189           1         188     |
+-----------------------------------------------------+
+* = FE nested within cluster; treated as redundant for DoF computation
+
+\\
+// Attempt to include another fixed effects for genre\
+// To get the genre for each book, I used gutendex api and open ai as provided in the email. Then, I merged the master data and the title-genre data using title. \
+\
+. reghdfe lnloans postscanned, absorb(bib_doc_id yearloc genre) vce(cluster bib_doc_id)
+(MWFE estimator converged in 9 iterations)
+
+HDFE Linear regression                            Number of obs   =    783,612
+Absorbing 3 HDFE groups                           F(   1,  87067) =     118.98
+Statistics robust to heteroskedasticity           Prob > F        =     0.0000
+                                                  R-squared       =     0.7539
+                                                  Adj R-squared   =     0.7224
+                                                  Within R-sq.    =     0.0002
+Number of clusters (bib_doc_id) =     87,068      Root MSE        =     0.1780
+
+                        (Std. err. adjusted for 87,068 clusters in bib_doc_id)
+------------------------------------------------------------------------------
+             |               Robust
+     lnloans | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+ postscanned |  -.0087618   .0008032   -10.91   0.000    -.0103361   -.0071874
+       _cons |   .1435101   .0001535   934.86   0.000     .1432093     .143811
+------------------------------------------------------------------------------
+
+Absorbed degrees of freedom:
+-----------------------------------------------------+
+ Absorbed FE | Categories  - Redundant  = Num. Coefs |
+-------------+---------------------------------------|
+  bib_doc_id |     87068       87068           0    *|
+     yearloc |       189           1         188     |
+       genre |      1502           1        1501     |
+-----------------------------------------------------+
+* = FE nested within cluster; treated as redundant for DoF computation
+\\
+. reghdfe loandummies postscanned, absorb(bib_doc_id yearloc genre) vce(cluster bib_doc_id)
+(MWFE estimator converged in 9 iterations)
+
+HDFE Linear regression                            Number of obs   =    783,612
+Absorbing 3 HDFE groups                           F(   1,  87067) =     161.37
+Statistics robust to heteroskedasticity           Prob > F        =     0.0000
+                                                  R-squared       =     0.8241
+                                                  Adj R-squared   =     0.8017
+                                                  Within R-sq.    =     0.0002
+Number of clusters (bib_doc_id) =     87,068      Root MSE        =     0.1668
+
+                        (Std. err. adjusted for 87,068 clusters in bib_doc_id)
+------------------------------------------------------------------------------
+             |               Robust
+ loandummies | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+ postscanned |  -.0095137   .0007489   -12.70   0.000    -.0109816   -.0080459
+       _cons |   .1705305   .0001431  1191.46   0.000       .17025     .170811
+------------------------------------------------------------------------------
+
+Absorbed degrees of freedom:
+-----------------------------------------------------+
+ Absorbed FE | Categories  - Redundant  = Num. Coefs |
+-------------+---------------------------------------|
+  bib_doc_id |     87068       87068           0    *|
+     yearloc |       189           1         188     |
+       genre |      1502           1        1501     |
+-----------------------------------------------------+
+* = FE nested within cluster; treated as redundant for DoF computation
+\\
+// Attempt to create table results that resemble table 5 in the paper\
+. esttab est1 est2, label keep(postscanned*) se nonotes coeflabels(postscanned "Post-Scanned") s(bookfe yearloc
+> fe genrefe N, label("Book FE" "Year-Location FE" "Genre FE" N )) mtitles("log-OLS"  "LPM") mgroups( "Main eff
+> ect") nonumbers
+
+----------------------------------------------------
+                      Main effect                   
+                          log-OLS             LPM   
+----------------------------------------------------
+Post-Scanned             -0.00876***     -0.00951***
+                       (0.000803)      (0.000749)   
+----------------------------------------------------
+Book FE                       Yes             Yes   
+Year-Location FE              Yes             Yes   
+Genre FE                      Yes             Yes   
+N                          783612          783612   
+----------------------------------------------------
+
+}
